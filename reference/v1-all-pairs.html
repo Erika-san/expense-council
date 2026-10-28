@@ -1,0 +1,627 @@
+<title>出費会議</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: one narrow column, three steps (register, compare, result) switched by a tab row.
+   Money is set in mono so figures line up like a household ledger. */
+:root {
+  --bg: #F2F4F3;
+  --surface: #FFFFFF;
+  --ink: #13201C;
+  --muted: #5B6B66;
+  --line: #D5DDDA;
+  --accent: #2848D8;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3E8FB;
+  --ok: #12805C;
+  --ok-soft: #DDF1E8;
+  --bad: #B42318;
+  --bad-soft: #FBE4E1;
+  --font-display: "Dela Gothic One", "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --font-num: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1412; --surface: #17201D; --ink: #E8EFEC; --muted: #93A39D; --line: #2A3632;
+    --accent: #8DA2FF; --accent-ink: #0E1412; --accent-soft: #1E2748;
+    --ok: #4CCB9B; --ok-soft: #14322A; --bad: #FF8A7E; --bad-soft: #3A1B18;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1412; --surface: #17201D; --ink: #E8EFEC; --muted: #93A39D; --line: #2A3632;
+  --accent: #8DA2FF; --accent-ink: #0E1412; --accent-soft: #1E2748;
+  --ok: #4CCB9B; --ok-soft: #14322A; --bad: #FF8A7E; --bad-soft: #3A1B18;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.65;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3, p { margin: 0; }
+h1 { font-family: var(--font-display); font-size: 30px; line-height: 1.2; font-weight: 400; letter-spacing: 0.02em; text-wrap: balance; }
+h2 { font-size: 17px; font-weight: 900; text-wrap: balance; }
+.lead { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--line); margin-top: 16px; }
+.steps button {
+  background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px;
+  padding: 10px 4px 9px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  color: var(--muted); font-weight: 700; min-height: 44px;
+}
+.steps .n { font-family: var(--font-num); font-size: 12px; border: 1px solid currentColor; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; }
+.steps button[aria-current="step"] { color: var(--ink); border-bottom-color: var(--accent); }
+.steps button[aria-current="step"] .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.steps button[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+
+/* generic */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.banner { background: var(--accent-soft); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.banner b { font-weight: 900; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+input[type="text"] {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; min-height: 44px; width: 100%; min-width: 0;
+}
+input[type="text"]::placeholder { color: var(--muted); opacity: 0.7; }
+input.num { font-size: 17px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 10px 16px; min-height: 44px; font-weight: 700; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { background: none; color: var(--muted); font-weight: 500; }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.btn.armed { border-color: var(--bad); color: var(--bad); }
+.msg { font-size: 13px; color: var(--bad); min-height: 1.2em; }
+.hint { font-size: 13px; color: var(--muted); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* budget meter */
+.meter { display: flex; flex-direction: column; gap: 8px; }
+.meter-bar { position: relative; height: 10px; background: var(--line); border-radius: 5px; }
+.meter-fill { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 5px; }
+.meter-tick { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); }
+.meter-cap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.meter-cap b { color: var(--ink); font-weight: 700; }
+.meter-note { font-size: 13.5px; font-weight: 700; }
+.meter-note.over { color: var(--bad); }
+.meter-note.fit { color: var(--ok); }
+
+/* list */
+.list { display: flex; flex-direction: column; }
+.list-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.item { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.item:first-of-type { border-top: 0; }
+.item .name { font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+.item .note { grid-column: 1 / 2; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.item .price { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; }
+.item .del { background: none; border: 0; color: var(--muted); width: 44px; height: 44px; font-size: 20px; line-height: 1; border-radius: 8px; grid-row: 1 / 3; grid-column: 3; }
+.item .del:hover { color: var(--bad); background: var(--bad-soft); }
+.chip { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 99px; margin-left: 6px; vertical-align: 1px; letter-spacing: 0.03em; }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.empty { color: var(--muted); padding: 18px 0 6px; text-align: center; }
+
+/* compare */
+.progress { display: flex; flex-direction: column; gap: 6px; }
+.progress-bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.25s ease; }
+.progress-cap { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.duel { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.opt {
+  background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 20px 16px 18px; min-height: 190px;
+  display: flex; flex-direction: column; gap: 10px; text-align: left; align-items: flex-start; min-width: 0;
+}
+.opt:hover { border-color: var(--accent); }
+.opt:active { background: var(--accent-soft); }
+.opt .oname { font-size: 20px; font-weight: 900; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+.opt .oprice { font-family: var(--font-num); font-size: 18px; font-variant-numeric: tabular-nums; }
+.opt .onote { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; margin-top: auto; }
+.vs {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  background: var(--ink); color: var(--bg); font-family: var(--font-display); font-size: 13px;
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; pointer-events: none;
+}
+@media (max-width: 360px) { .duel { grid-template-columns: 1fr; } .opt { min-height: 0; } }
+.kbd { font-size: 12.5px; color: var(--muted); text-align: center; }
+.pop { animation: pop 0.18s ease-out; }
+@keyframes pop { from { opacity: 0.4; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pop { animation: none; } .progress-fill { transition: none; } }
+
+/* result */
+.verdict { background: var(--ink); color: var(--bg); border-radius: 12px; padding: 20px 16px; display: flex; flex-direction: column; gap: 6px; }
+.verdict .label { font-size: 13px; opacity: 0.75; letter-spacing: 0.06em; }
+.verdict .big { font-family: var(--font-display); font-size: 34px; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.verdict .sub { font-size: 14px; opacity: 0.85; }
+.verdict .sub .num { font-weight: 500; }
+.pick { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 14px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.pick:first-of-type { border-top: 0; }
+.pick .name { font-weight: 900; font-size: 16px; overflow-wrap: anywhere; min-width: 0; }
+.pick .price { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-weight: 500; }
+.pick .meta { grid-column: 1 / -1; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.pick .meta .num { color: var(--ink); }
+.skip .name { font-weight: 700; color: var(--muted); }
+.skip .price { color: var(--muted); }
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pick-actions { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.btn.sm { min-height: 36px; padding: 4px 12px; font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>出費会議</h1>
+    <p class="lead">欲しいものを2つずつ戦わせて、来月の予算で買える一番いい組み合わせを決めます。</p>
+    <nav class="steps" id="steps" aria-label="手順">
+      <button type="button" data-go="register"><span class="n">1</span>登録</button>
+      <button type="button" data-go="compare"><span class="n">2</span>比較</button>
+      <button type="button" data-go="result"><span class="n">3</span>結果</button>
+    </nav>
+  </header>
+
+  <!-- 1. register -->
+  <section id="v-register" class="wrap" style="gap:16px">
+    <div class="banner" id="sample-banner" hidden>
+      <span><b>サンプル表示中。</b>最初の1件を追加するとサンプルは消えます。</span>
+      <button type="button" class="btn" id="clear-sample" style="min-height:36px;padding:4px 12px">今すぐ消す</button>
+    </div>
+
+    <div class="panel">
+      <div class="field">
+        <label for="budget">来月の予算（Rp）</label>
+        <input type="text" id="budget" class="num" inputmode="numeric" autocomplete="off" placeholder="5.000.000">
+      </div>
+      <div class="meter" id="meter"></div>
+    </div>
+
+    <form class="panel" id="add-form" autocomplete="off">
+      <h2>欲しいものを追加</h2>
+      <div class="row">
+        <div class="field">
+          <label for="name">名前</label>
+          <input type="text" id="name" maxlength="30" placeholder="例：ノイズキャンセリングイヤホン">
+        </div>
+        <div class="field">
+          <label for="price">値段（Rp）</label>
+          <input type="text" id="price" class="num" inputmode="numeric" placeholder="1.800.000">
+        </div>
+      </div>
+      <div class="field">
+        <label for="note">アピールポイント</label>
+        <input type="text" id="note" maxlength="60" placeholder="例：通勤電車が静かになる">
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn primary">追加する</button>
+        <span class="msg" id="form-msg" role="status"></span>
+      </div>
+    </form>
+
+    <div class="panel">
+      <div class="list-head"><h2 id="list-title">登録したもの</h2><span class="hint" id="list-count"></span></div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div id="stash" class="wrap" style="gap:16px"></div>
+
+    <div class="actions" style="flex-direction:column;align-items:stretch">
+      <button type="button" class="btn primary" id="next-btn"></button>
+      <p class="hint" id="next-hint" style="text-align:center"></p>
+    </div>
+  </section>
+
+  <!-- 2. compare -->
+  <section id="v-compare" class="wrap" style="gap:16px" hidden>
+    <div class="progress">
+      <div class="progress-bar"><div class="progress-fill" id="p-fill"></div></div>
+      <div class="progress-cap"><span id="p-text"></span><span id="p-left"></span></div>
+    </div>
+    <div id="cmp"></div>
+    <div class="actions" style="justify-content:space-between">
+      <button type="button" class="btn ghost" id="undo">← ひとつ戻る</button>
+      <button type="button" class="btn ghost" id="tie">どちらでもいい</button>
+    </div>
+  </section>
+
+  <!-- 3. result -->
+  <section id="v-result" class="wrap" style="gap:16px" hidden>
+    <div id="res" class="wrap" style="gap:16px"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var KEY = 'shuppi-kaigi-v1';
+  var MAX_ITEMS = 16;
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var yen = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+  var num = function (s) {
+    var d = String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }).replace(/[^\d]/g, '').slice(0, 12);
+    return d === '' ? null : Number(d);
+  };
+  var key = function (a, b) { return a < b ? a + '-' + b : b + '-' + a; };
+
+  function sampleState() {
+    return {
+      sample: true, budget: 5000000, budgetTouched: false, step: 'register', nextId: 7, votes: {}, history: [],
+      items: [
+        { id: 1, name: 'ワイヤレスイヤホン', price: 1800000, note: '通勤電車が静かになる' },
+        { id: 2, name: '電動歯ブラシ', price: 950000, note: '歯医者の仕上がりに近づく' },
+        { id: 3, name: '冬用ブーツ', price: 1450000, note: '雪の日でも滑らない' },
+        { id: 4, name: 'ミニ加湿器', price: 420000, note: '喉の乾燥が楽になる' },
+        { id: 5, name: '読みたい本セット', price: 680000, note: '積読の候補を一気に解消' },
+        { id: 6, name: 'コーヒーミル', price: 1200000, note: '毎朝の一杯が変わる' }
+      ]
+    };
+  }
+  function load() {
+    try {
+      var r = localStorage.getItem(KEY);
+      if (r) { var d = JSON.parse(r); if (d && d.sample) return sampleState(); if (d && Array.isArray(d.items)) { d.votes = d.votes || {}; d.history = d.history || []; return d; } }
+    } catch (e) {}
+    return sampleState();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var S = load();
+  var cur = null;      // [idA, idB] shown now
+  var lastPair = null; // previous pair, used to vary the next one
+
+  /* ---------- logic ---------- */
+  function eligible() { return S.budget == null ? [] : S.items.filter(function (i) { return st(i) === 'active' && i.price <= S.budget; }); }
+  function allPairs() {
+    var e = eligible(), out = [];
+    for (var i = 0; i < e.length; i++) for (var j = i + 1; j < e.length; j++) out.push([e[i].id, e[j].id]);
+    return out;
+  }
+  function isOpen(p) { return S.votes[key(p[0], p[1])] === undefined; }
+  function scores() {
+    var m = {};
+    eligible().forEach(function (i) { m[i.id] = { w: 0, t: 0, score: 0 }; });
+    allPairs().forEach(function (p) {
+      var v = S.votes[key(p[0], p[1])];
+      if (v === undefined) return;
+      if (v === 0) { m[p[0]].t++; m[p[1]].t++; }
+      else if (m[v]) m[v].w++;
+    });
+    Object.keys(m).forEach(function (k) { m[k].score = 2 * m[k].w + m[k].t; });
+    return m;
+  }
+  // Best subset under budget: maximise sum(score + 1), then spend less.
+  function solve(e, sc, budget) {
+    var n = e.length, bestMask = 0, bestVal = -1, bestCost = 0;
+    for (var mask = 0; mask < (1 << n); mask++) {
+      var cost = 0, val = 0;
+      for (var i = 0; i < n; i++) if (mask & (1 << i)) { cost += e[i].price; val += sc[e[i].id].score + 1; }
+      if (cost > budget) continue;
+      if (val > bestVal || (val === bestVal && cost < bestCost)) { bestVal = val; bestCost = cost; bestMask = mask; }
+    }
+    var chosen = [];
+    for (var k = 0; k < n; k++) if (bestMask & (1 << k)) chosen.push(e[k]);
+    return { chosen: chosen, cost: bestCost };
+  }
+  function byId(id) { return S.items.filter(function (i) { return i.id === id; })[0]; }
+  function st(i) { return i.status || 'active'; }
+  function activeItems() { return S.items.filter(function (i) { return st(i) === 'active'; }); }
+  function hasBought() { return S.items.some(function (i) { return st(i) === 'bought'; }); }
+  function syncBudget() { $('#budget').value = S.budget == null ? '' : S.budget.toLocaleString('id-ID'); }
+  function removeItem(id) {
+    S.items = S.items.filter(function (i) { return i.id !== id; });
+    Object.keys(S.votes).forEach(function (k) { if (k.split('-').map(Number).indexOf(id) >= 0) delete S.votes[k]; });
+    S.history = S.history.filter(function (k) { return k.split('-').map(Number).indexOf(id) < 0; });
+    cur = null; save(); render();
+  }
+  function changeStatus(id, act) {
+    var i = byId(id); if (!i) return;
+    if (act === 'buy') { if (S.budget == null || i.price > S.budget) return; S.budget -= i.price; i.status = 'bought'; syncBudget(); }
+    else if (act === 'undobuy') { S.budget = (S.budget || 0) + i.price; i.status = 'active'; syncBudget(); }
+    else if (act === 'drop') { i.status = 'inactive'; }
+    else if (act === 'revive') { i.status = 'active'; }
+    cur = null; save(); render();
+  }
+  function actionsHtml(i, canBuy) {
+    return '<div class="pick-actions">' +
+      (canBuy ? '<button type="button" class="btn sm primary" data-act="buy" data-id="' + i.id + '">買った</button>' : '') +
+      '<button type="button" class="btn sm" data-act="drop" data-id="' + i.id + '">やめる</button>' +
+      '<button type="button" class="btn sm ghost" data-act="del" data-id="' + i.id + '">削除</button></div>';
+  }
+  function stashHtml() {
+    var bought = S.items.filter(function (i) { return st(i) === 'bought'; });
+    var off = S.items.filter(function (i) { return st(i) === 'inactive'; });
+    var h = '';
+    if (bought.length) {
+      var sum = bought.reduce(function (a, i) { return a + i.price; }, 0);
+      h += '<div class="panel"><div class="section-title"><h2>購入済み</h2><span class="hint">合計 <span class="num">' + yen(sum) + '</span></span></div>' +
+        '<p class="hint">取り消すと予算が戻り、候補に復帰します。</p><div>' +
+        bought.map(function (i) {
+          return '<div class="pick skip"><span class="name">' + esc(i.name) + '</span><span class="price">' + yen(i.price) + '</span>' +
+            '<div class="pick-actions"><button type="button" class="btn sm" data-act="undobuy" data-id="' + i.id + '">購入を取り消す</button>' +
+            '<button type="button" class="btn sm ghost" data-act="del" data-id="' + i.id + '">削除</button></div></div>';
+        }).join('') + '</div></div>';
+    }
+    if (off.length) {
+      h += '<div class="panel"><div class="section-title"><h2>やめたもの</h2><span class="hint">比較には出ません</span></div><div>' +
+        off.map(function (i) {
+          return '<div class="pick skip"><span class="name">' + esc(i.name) + '</span><span class="price">' + yen(i.price) + '</span>' +
+            '<div class="pick-actions"><button type="button" class="btn sm" data-act="revive" data-id="' + i.id + '">復活</button>' +
+            '<button type="button" class="btn sm ghost" data-act="del" data-id="' + i.id + '">削除</button></div></div>';
+        }).join('') + '</div></div>';
+    }
+    return h;
+  }
+
+  function ensureCur() {
+    var open = allPairs().filter(isOpen);
+    if (!open.length) { cur = null; return; }
+    if (cur && open.some(function (p) { return key(p[0], p[1]) === key(cur[0], cur[1]); })) return;
+    var pool = open;
+    if (lastPair) {
+      var fresh = open.filter(function (p) { return lastPair.indexOf(p[0]) < 0 && lastPair.indexOf(p[1]) < 0; });
+      if (fresh.length) pool = fresh;
+    }
+    var p = pool[Math.floor(Math.random() * pool.length)];
+    cur = Math.random() < 0.5 ? [p[0], p[1]] : [p[1], p[0]];
+  }
+  function vote(winner) {
+    if (!cur) return;
+    var k = key(cur[0], cur[1]);
+    S.votes[k] = winner;
+    S.history.push(k);
+    lastPair = cur; cur = null;
+    save(); render();
+  }
+  function undoIndex() {
+    var ok = {}; allPairs().forEach(function (p) { ok[key(p[0], p[1])] = 1; });
+    for (var n = S.history.length - 1; n >= 0; n--) if (ok[S.history[n]]) return n;
+    return -1;
+  }
+  function undo() {
+    var ix = undoIndex();
+    if (ix < 0) return;
+    var k = S.history.splice(ix, 1)[0];
+    delete S.votes[k];
+    cur = k.split('-').map(Number);
+    lastPair = null;
+    save(); render();
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var pairs = allPairs();
+    if (S.step === 'compare' && !pairs.length) S.step = S.items.length ? 'result' : 'register';
+    if (S.step === 'result' && !S.items.length) S.step = 'register';
+
+    ['register', 'compare', 'result'].forEach(function (s) { $('#v-' + s).hidden = S.step !== s; });
+    var canCompare = pairs.length > 0, canResult = S.items.length > 0;
+    document.querySelectorAll('#steps button').forEach(function (b) {
+      var g = b.getAttribute('data-go');
+      b.toggleAttribute('aria-current', false);
+      if (g === S.step) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      var dis = (g === 'compare' && !canCompare) || (g === 'result' && !canResult);
+      b.setAttribute('aria-disabled', dis ? 'true' : 'false');
+    });
+
+    renderRegister(pairs);
+    if (S.step === 'compare') renderCompare(pairs);
+    if (S.step === 'result') renderResult();
+  }
+
+  function renderRegister(pairs) {
+    $('#sample-banner').hidden = !S.sample;
+    $('#stash').innerHTML = stashHtml();
+    var total = activeItems().reduce(function (a, i) { return a + i.price; }, 0);
+    var spent = S.items.filter(function (i) { return st(i) === 'bought'; }).reduce(function (a, i) { return a + i.price; }, 0);
+    var b = S.budget, m = $('#meter');
+    if (b == null) {
+      m.innerHTML = '<p class="hint">予算を入れると、買えるものが絞り込まれます。</p>';
+    } else {
+      var max = Math.max(total, b, 1);
+      var fill = (total / max * 100).toFixed(1), tick = (b / max * 100).toFixed(1);
+      var note = total === 0 ? '' : total <= b
+        ? '<p class="meter-note fit">全部買っても予算内です。比較なしで全部買えます。</p>'
+        : '<p class="meter-note over">全部だと ' + yen(total - b) + ' 超えます。選ぶ必要があります。</p>';
+      m.innerHTML =
+        '<div class="meter-bar"><div class="meter-fill" style="width:' + fill + '%"></div><div class="meter-tick" style="left:calc(' + tick + '% - 1px)"></div></div>' +
+        '<div class="meter-cap"><span>欲しいもの合計 <b class="num">' + yen(total) + '</b></span><span>' + (spent ? '残り予算' : '予算') + ' <b class="num">' + yen(b) + '</b></span>' + (spent ? '<span>購入済み <b class="num">' + yen(spent) + '</b></span>' : '') + '</div>' + note;
+    }
+
+    var act = activeItems();
+    $('#list-count').textContent = act.length ? act.length + ' / ' + MAX_ITEMS + ' 件' : '';
+    var list = $('#list');
+    if (!act.length) {
+      list.innerHTML = '<p class="empty">まだ何もありません。上のフォームから1件目を追加してください。</p>';
+    } else {
+      list.innerHTML = act.map(function (i) {
+        var over = b != null && i.price > b;
+        return '<div class="item"><div class="name">' + esc(i.name) + (over ? '<span class="chip bad">予算超え</span>' : '') + '</div>' +
+          '<div class="price">' + yen(i.price) + '</div>' +
+          '<button type="button" class="del" data-del="' + i.id + '" aria-label="' + esc(i.name) + 'を削除">×</button>' +
+          (i.note ? '<div class="note">' + esc(i.note) + '</div>' : '') + '</div>';
+      }).join('');
+    }
+
+    var btn = $('#next-btn'), hint = $('#next-hint'), e = eligible().length;
+    if (pairs.length) {
+      var open = pairs.filter(isOpen).length;
+      btn.disabled = false; btn.dataset.go = open ? 'compare' : 'result';
+      btn.textContent = open ? '比較をはじめる（' + open + '組）→' : '結果を見る →';
+      hint.textContent = '登録は後からいつでも追加できます。';
+    } else if (e === 1 || (e === 0 && b != null && S.items.length)) {
+      btn.disabled = false; btn.dataset.go = 'result'; btn.textContent = '結果を見る →'; hint.textContent = '';
+    } else {
+      btn.disabled = true; btn.dataset.go = '';
+      btn.textContent = '比較をはじめる →';
+      hint.textContent = b == null ? 'まず予算を入れてください。' : '予算内のものを2つ以上登録してください。';
+    }
+  }
+
+  function card(id) {
+    var i = byId(id);
+    return '<button type="button" class="opt pop" data-pick="' + id + '">' +
+      '<span class="oname">' + esc(i.name) + '</span><span class="oprice">' + yen(i.price) + '</span>' +
+      (i.note ? '<span class="onote">' + esc(i.note) + '</span>' : '') + '</button>';
+  }
+  function renderCompare(pairs) {
+    var open = pairs.filter(isOpen).length, done = pairs.length - open;
+    $('#p-fill').style.width = (pairs.length ? done / pairs.length * 100 : 0) + '%';
+    $('#p-text').textContent = done + ' / ' + pairs.length + ' 組 完了';
+    $('#p-left').textContent = open ? 'あと ' + open + ' 組' : '';
+    $('#undo').disabled = undoIndex() < 0;
+    $('#tie').hidden = !open;
+    var el = $('#cmp');
+    if (!open) {
+      cur = null;
+      el.innerHTML = '<div class="panel" style="text-align:center;padding:28px 16px"><h2>全部比べ終わりました</h2>' +
+        '<button type="button" class="btn primary" data-go="result">結果を見る →</button></div>';
+      return;
+    }
+    ensureCur();
+    el.innerHTML = '<p class="hint" style="text-align:center;margin-bottom:10px">どっちが欲しい？</p>' +
+      '<div class="duel">' + card(cur[0]) + card(cur[1]) + '<span class="vs" aria-hidden="true">VS</span></div>' +
+      '<p class="kbd" style="margin-top:10px">キーボードは ← → で選べます</p>';
+  }
+
+  function renderResult() {
+    var e = eligible(), el = $('#res');
+    var sc = scores(), sol = solve(e, sc, S.budget);
+    var open = allPairs().filter(isOpen).length;
+    var chosenIds = {}; sol.chosen.forEach(function (i) { chosenIds[i.id] = 1; });
+    var sorted = function (arr) { return arr.slice().sort(function (a, b) { return (sc[b.id].score - sc[a.id].score) || (a.price - b.price); }); };
+    var oppo = Math.max(e.length - 1, 0);
+    var meta = function (i) {
+      if (!oppo) return '';
+      var s = sc[i.id];
+      return '<span class="num">' + s.w + '勝</span> / ' + oppo + '戦' + (s.t ? '（引き分け ' + s.t + '）' : '') + (i.note ? ' ・ ' + esc(i.note) : '');
+    };
+    var html = '';
+    if (open) {
+      html += '<div class="banner"><span><b>暫定結果です。</b>あと ' + open + ' 組が未回答です。</span><button type="button" class="btn" data-go="compare" style="min-height:36px;padding:4px 12px">続ける</button></div>';
+    }
+    html += '<div class="verdict"><span class="label">' + (hasBought() ? 'ここからの出費案' : '来月の出費') + '</span>' +
+      '<span class="big">' + yen(sol.cost) + '</span>' +
+      '<span class="sub">' + (hasBought() ? '残り予算' : '予算') + ' <span class="num">' + yen(S.budget) + '</span> ・ 残り <span class="num">' + yen(S.budget - sol.cost) + '</span> ・ ' + sol.chosen.length + '点</span></div>';
+
+    html += '<div class="panel"><div class="section-title"><h2>買うもの</h2><span class="hint">勝ち数が多い順</span></div><div>' +
+      (sol.chosen.length ? sorted(sol.chosen).map(function (i) {
+        return '<div class="pick"><span class="name">' + esc(i.name) + '</span><span class="price">' + yen(i.price) + '</span><span class="meta">' + meta(i) + '</span>' + actionsHtml(i, true) + '</div>';
+      }).join('') : '<p class="empty">予算内で買えるものがありません。</p>') + '</div></div>';
+
+    var skipped = sorted(e.filter(function (i) { return !chosenIds[i.id]; }));
+    var tooBig = activeItems().filter(function (i) { return i.price > S.budget; });
+    if (skipped.length || tooBig.length) {
+      html += '<div class="panel"><h2>今月は見送り</h2><div>' +
+        skipped.map(function (i) {
+          return '<div class="pick skip"><span class="name">' + esc(i.name) + '</span><span class="price">' + yen(i.price) + '</span><span class="meta">' + meta(i) + ' ・ 予算に入りきらない</span>' + actionsHtml(i, true) + '</div>';
+        }).join('') +
+        tooBig.map(function (i) {
+          return '<div class="pick skip"><span class="name">' + esc(i.name) + '</span><span class="price">' + yen(i.price) + '</span><span class="meta">1点で予算を超えるため比較から除外</span>' + actionsHtml(i, false) + '</div>';
+        }).join('') + '</div></div>';
+    }
+    html += stashHtml();
+    html += '<p class="hint">各ペアの勝ち数を点数にして、予算内で合計点が最大になる組み合わせを選んでいます。同点なら出費が少ない方です。</p>';
+    html += '<div class="actions"><button type="button" class="btn" id="redo-votes">比較をやり直す</button>' +
+      '<button type="button" class="btn ghost" id="wipe">すべて消して最初から</button></div>';
+    el.innerHTML = html;
+  }
+
+  /* ---------- events ---------- */
+  function go(step) {
+    var pairs = allPairs();
+    if (step === 'compare' && !pairs.length) return;
+    if (step === 'result' && !eligible().length) return;
+    S.step = step; save(); render();
+    window.scrollTo(0, 0);
+  }
+  function resetSampleIfNeeded() {
+    if (!S.sample) return;
+    S.items = []; S.votes = {}; S.history = []; S.sample = false;
+    if (!S.budgetTouched) S.budget = null;
+    $('#budget').value = S.budget == null ? '' : S.budget.toLocaleString('id-ID');
+  }
+  function armed(btn, label, run) {
+    if (btn.classList.contains('armed')) { run(); return; }
+    var orig = btn.textContent;
+    btn.classList.add('armed'); btn.textContent = label;
+    setTimeout(function () { btn.classList.remove('armed'); btn.textContent = orig; }, 3000);
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button'); if (!t) return;
+    if (t.dataset.go) {
+      if (t.getAttribute('aria-disabled') === 'true' || t.disabled) return;
+      go(t.dataset.go); return;
+    }
+    if (t.dataset.del) { removeItem(Number(t.dataset.del)); return; }
+    if (t.dataset.act) {
+      var aid = Number(t.dataset.id), act = t.dataset.act;
+      if (act === 'del') armed(t, 'もう一度押すと削除', function () { removeItem(aid); });
+      else changeStatus(aid, act);
+      return;
+    }
+    if (t.dataset.pick) { vote(Number(t.dataset.pick)); return; }
+    if (t.id === 'tie') { vote(0); return; }
+    if (t.id === 'undo') { undo(); return; }
+    if (t.id === 'clear-sample') { resetSampleIfNeeded(); save(); render(); return; }
+    if (t.id === 'redo-votes') {
+      armed(t, 'もう一度押すと消えます', function () { S.votes = {}; S.history = []; cur = null; lastPair = null; S.step = 'compare'; save(); render(); window.scrollTo(0, 0); });
+      return;
+    }
+    if (t.id === 'wipe') {
+      armed(t, 'もう一度押すと全部消えます', function () {
+        S = { sample: false, budget: null, budgetTouched: false, step: 'register', nextId: 1, votes: {}, history: [], items: [] };
+        cur = null; lastPair = null; $('#budget').value = ''; save(); render(); window.scrollTo(0, 0);
+      });
+    }
+  });
+
+  document.addEventListener('keydown', function (ev) {
+    if (S.step !== 'compare' || !cur) return;
+    var tag = (ev.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); vote(cur[0]); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); vote(cur[1]); }
+  });
+
+  $('#budget').addEventListener('input', function (ev) {
+    var n = num(ev.target.value);
+    S.budget = n; S.budgetTouched = true; cur = null;
+    save(); render();
+  });
+  $('#budget').addEventListener('blur', function (ev) {
+    ev.target.value = S.budget == null ? '' : S.budget.toLocaleString('id-ID');
+  });
+  $('#price').addEventListener('blur', function (ev) {
+    var n = num(ev.target.value);
+    ev.target.value = n == null ? '' : n.toLocaleString('id-ID');
+  });
+
+  $('#add-form').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var msg = $('#form-msg'), name = $('#name').value.trim(), price = num($('#price').value), note = $('#note').value.trim();
+    if (!name) { msg.textContent = '名前を入れてください。'; $('#name').focus(); return; }
+    if (!price) { msg.textContent = '値段を1円以上の数字で入れてください。'; $('#price').focus(); return; }
+    var base = S.sample ? 0 : activeItems().length;
+    if (base >= MAX_ITEMS) { msg.textContent = MAX_ITEMS + '件までです。比較の数が増えすぎるためです。'; return; }
+    resetSampleIfNeeded();
+    S.items.push({ id: S.nextId++, name: name, price: price, note: note });
+    msg.textContent = '';
+    $('#name').value = ''; $('#price').value = ''; $('#note').value = '';
+    $('#name').focus();
+    cur = null; save(); render();
+  });
+
+  $('#budget').value = S.budget == null ? '' : S.budget.toLocaleString('id-ID');
+  render();
+})();
+</script>

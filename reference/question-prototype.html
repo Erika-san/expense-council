@@ -1,0 +1,279 @@
+<title>出費会議 質問方式</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: one narrow column. Question card on top, the ranking being built below it,
+   so the reader sees why each question is asked. Same tokens as the main app. */
+:root {
+  --bg: #F2F4F3; --surface: #FFFFFF; --ink: #13201C; --muted: #5B6B66; --line: #D5DDDA;
+  --accent: #2848D8; --accent-ink: #FFFFFF; --accent-soft: #E3E8FB;
+  --ok: #12805C; --ok-soft: #DDF1E8; --bad: #B42318; --bad-soft: #FBE4E1;
+  --font-display: "Dela Gothic One", "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  --font-num: "DM Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1412; --surface: #17201D; --ink: #E8EFEC; --muted: #93A39D; --line: #2A3632;
+    --accent: #8DA2FF; --accent-ink: #0E1412; --accent-soft: #1E2748;
+    --ok: #4CCB9B; --ok-soft: #14322A; --bad: #FF8A7E; --bad-soft: #3A1B18; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1412; --surface: #17201D; --ink: #E8EFEC; --muted: #93A39D; --line: #2A3632;
+  --accent: #8DA2FF; --accent-ink: #0E1412; --accent-soft: #1E2748;
+  --ok: #4CCB9B; --ok-soft: #14322A; --bad: #FF8A7E; --bad-soft: #3A1B18; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.65;
+  padding-block: 20px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+h1, h2, p { margin: 0; }
+h1 { font-family: var(--font-display); font-size: 28px; line-height: 1.25; font-weight: 400; letter-spacing: 0.02em; text-wrap: balance; }
+h2 { font-size: 16px; font-weight: 900; }
+.lead { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.hint { font-size: 13px; color: var(--muted); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font-size: 12.5px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+input[type="text"] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 44px; width: 100%; min-width: 0; font-family: var(--font-num); font-size: 16px; }
+input[type="range"] { width: 100%; min-height: 44px; accent-color: var(--accent); }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 10px 16px; min-height: 44px; font-weight: 700; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { background: none; color: var(--muted); font-weight: 500; }
+.btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* counter */
+.count { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.count .big { font-family: var(--font-display); font-size: 34px; line-height: 1.1; }
+.count .big small { font-family: var(--font-body); font-size: 14px; color: var(--muted); margin-left: 6px; }
+.bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); transition: width 0.2s ease; }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp div { background: var(--bg); border-radius: 8px; padding: 10px 12px; }
+.cmp b { display: block; font-family: var(--font-num); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.cmp span { font-size: 12.5px; color: var(--muted); }
+.cmp .win b { color: var(--ok); }
+
+/* duel */
+.duel { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.opt { background: var(--surface); border: 2px solid var(--line); border-radius: 12px; padding: 20px 16px 18px; min-height: 170px; display: flex; flex-direction: column; gap: 10px; text-align: left; align-items: flex-start; min-width: 0; }
+.opt:hover { border-color: var(--accent); }
+.opt:active { background: var(--accent-soft); }
+.opt .tag { font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent); background: var(--accent-soft); border-radius: 99px; padding: 1px 8px; }
+.opt .tag.plain { color: var(--muted); background: var(--bg); }
+.opt .oname { font-size: 19px; font-weight: 900; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+.opt .oprice { font-family: var(--font-num); font-size: 17px; font-variant-numeric: tabular-nums; }
+.opt .onote { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; margin-top: auto; }
+.vs { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--ink); color: var(--bg); font-family: var(--font-display); font-size: 13px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; pointer-events: none; }
+@media (max-width: 380px) { .duel, .row, .cmp { grid-template-columns: 1fr; } .opt { min-height: 0; } }
+
+/* ranking */
+.rank { display: flex; flex-direction: column; }
+.r { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 8px; align-items: baseline; padding: 7px 10px; border-radius: 6px; border: 1px solid transparent; }
+.r .no { font-family: var(--font-num); color: var(--muted); font-size: 13px; }
+.r .nm { overflow-wrap: anywhere; min-width: 0; }
+.r .pr { font-family: var(--font-num); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.r.in { background: var(--accent-soft); }
+.r.mid { border-color: var(--accent); }
+.r.mid .nm::after { content: "比較中"; margin-left: 8px; font-size: 11.5px; font-weight: 700; color: var(--accent); }
+.r.buy { background: var(--ok-soft); }
+.r.buy .nm { font-weight: 900; }
+.r.buy .nm::after { content: "買う"; margin-left: 8px; font-size: 11.5px; font-weight: 700; color: var(--ok); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--accent-soft); vertical-align: -1px; margin-right: 4px; }
+.verdict { background: var(--ink); color: var(--bg); border-radius: 12px; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+.verdict .label { font-size: 13px; opacity: 0.75; letter-spacing: 0.06em; }
+.verdict .big { font-family: var(--font-display); font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
+.verdict .sub { font-size: 14px; opacity: 0.85; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>質問方式プロトタイプ</h1>
+    <p class="lead">全ペアを比べる代わりに、ランキングへ1件ずつ入れていく方式です。質問の形は今のアプリと同じ2択です。件数を増やして、質問数がどう変わるか試してください。</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <div class="field">
+        <label for="n">アイテム数: <span class="num" id="n-out">30</span> 件</label>
+        <input type="range" id="n" min="6" max="30" value="30">
+      </div>
+      <div class="field">
+        <label for="budget">予算（Rp）</label>
+        <input type="text" id="budget" inputmode="numeric" autocomplete="off" value="15.000.000">
+      </div>
+    </div>
+    <p class="hint">サンプルのアイテムを使っています。件数か予算を変えると最初からになります。</p>
+  </div>
+
+  <div class="panel" id="counter"></div>
+
+  <section id="ask" class="wrap"></section>
+
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h2>ランキング（ここまでの順位）</h2>
+      <span class="hint" id="rank-note"></span>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="rank" id="rank"></div>
+  </div>
+
+  <div id="result" class="wrap"></div>
+</div>
+
+<script>
+(function () {
+  var ITEMS = [
+    ['ワイヤレスイヤホン', 1800000, '通勤電車が静かになる'], ['電動歯ブラシ', 950000, '磨き残しが減る'],
+    ['トレッキングシューズ', 1450000, '週末の山歩きに'], ['空気清浄機', 2400000, '部屋の空気が軽くなる'],
+    ['読みたい本セット', 680000, '積読を一気に解消'], ['コーヒーミル', 1200000, '毎朝の一杯が変わる'],
+    ['モバイルバッテリー', 450000, '外出中の電池切れ対策'], ['ノートPCスタンド', 380000, '肩こりが楽になる'],
+    ['メカニカルキーボード', 1500000, '打鍵感が気持ちいい'], ['スマートウォッチ', 2800000, '運動と睡眠を記録'],
+    ['ヨガマット', 300000, '家で体を動かす習慣に'], ['ランニングシューズ', 1350000, '膝への負担が減る'],
+    ['掃除ロボット', 3200000, '床掃除を任せられる'], ['電気ケトル', 350000, 'すぐお湯が沸く'],
+    ['ポータブルスピーカー', 900000, '部屋でも外でも音楽'], ['デスクライト', 520000, '夜の作業で目が疲れない'],
+    ['バックパック', 850000, '通勤にも旅行にも'], ['レインジャケット', 700000, '雨季の移動が楽になる'],
+    ['電子書籍リーダー', 1900000, '軽くて目に優しい'], ['フライパンセット', 600000, '自炊のやる気が出る'],
+    ['サーキュレーター', 750000, '部屋の空気を回せる'], ['外付けSSD', 1100000, 'バックアップが安心'],
+    ['カメラ用三脚', 480000, '夜景や集合写真に'], ['ボードゲーム', 420000, '友だちと遊べる'],
+    ['ウェブカメラ', 650000, '会議の映りが良くなる'], ['ゲーミングマウス', 550000, '作業が速くなる'],
+    ['圧力鍋', 800000, '煮込みが短時間で済む'], ['ハンドブレンダー', 400000, 'スープが楽に作れる'],
+    ['サングラス', 950000, '日差しが強い日の必需品'], ['シェーバー', 1050000, '肌への負担が減る']
+  ];
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var rp = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+  var toNum = function (s) { var d = String(s).replace(/[^\d]/g, '').slice(0, 11); return d === '' ? 0 : Number(d); };
+
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function maxQ(n) { var s = 0; for (var k = 1; k < n; k++) s += Math.ceil(Math.log2(k + 1)); return s; }
+
+  var N = 30, budget = 15000000, items = [], P = null, hist = [];
+
+  function start() {
+    items = ITEMS.slice(0, N).map(function (r, i) { return { id: i, name: r[0], price: r[1], note: r[2], util: rng(i * 7919 + 13)() }; });
+    var rand = rng(20261020), ids = items.map(function (i) { return i.id; });
+    for (var i = ids.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)); var t = ids[i]; ids[i] = ids[j]; ids[j] = t; }
+    P = { order: [ids[0]], queue: ids.slice(1), cur: null, lo: 0, hi: 1, asked: 0, done: false };
+    next();
+    hist = [];
+    render();
+  }
+  function next() {
+    if (!P.queue.length) { P.cur = null; P.done = true; return; }
+    P.cur = P.queue.shift(); P.lo = 0; P.hi = P.order.length;
+  }
+  function snap() { hist.push(JSON.stringify(P)); }
+  function answer(curWins) {
+    if (P.done) return;
+    snap();
+    var mid = (P.lo + P.hi) >> 1;
+    if (curWins) P.hi = mid; else P.lo = mid + 1;
+    P.asked++;
+    if (P.lo >= P.hi) { P.order.splice(P.lo, 0, P.cur); next(); }
+    render();
+  }
+  function undo() { if (!hist.length) return; P = JSON.parse(hist.pop()); render(); }
+  function auto() {
+    while (!P.done) {
+      var mid = (P.lo + P.hi) >> 1;
+      answer(items[P.cur].util > items[P.order[mid]].util);
+    }
+  }
+
+  /* knapsack: value = rank points, cost rounded up to 1.000 Rp */
+  function solve() {
+    var U = 1000, B = Math.floor(budget / U), n = P.order.length, t0 = performance.now();
+    var dp = new Int32Array(B + 1), keep = [];
+    P.order.forEach(function (id, idx) {
+      var it = items[id], c = Math.ceil(it.price / U), v = n - idx, k = new Uint8Array(B + 1);
+      for (var w = B; w >= c; w--) { if (dp[w - c] + v > dp[w]) { dp[w] = dp[w - c] + v; k[w] = 1; } }
+      keep.push(k);
+    });
+    var w = B, chosen = {};
+    for (var i = n - 1; i >= 0; i--) {
+      if (keep[i][w]) { chosen[P.order[i]] = 1; w -= Math.ceil(items[P.order[i]].price / U); }
+    }
+    return { chosen: chosen, ms: performance.now() - t0, value: dp[B] };
+  }
+
+  function render() {
+    var pairs = N * (N - 1) / 2, mq = maxQ(N);
+    $('#n-out').textContent = N;
+    var pct = P.done ? 100 : Math.min(100, P.asked / mq * 100);
+    $('#counter').innerHTML =
+      '<div class="count"><span class="big num">' + P.asked + '<small>問 回答済み</small></span><span class="hint">この方式の最大 <b class="num">' + mq + '</b> 問</span></div>' +
+      '<div class="bar"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
+      '<div class="cmp"><div class="win"><b>最大 ' + mq + ' 問</b><span>この方式（1件ずつランキングに入れる）</span></div><div><b>' + pairs + ' 問</b><span>全ペアを比べる今の方式</span></div></div>';
+
+    var ask = $('#ask');
+    if (P.done) {
+      ask.innerHTML = '<div class="panel" style="text-align:center"><h2>質問は終わりです（' + P.asked + ' 問）</h2><p class="hint">順位が決まったので、下で予算内の買い物を計算しています。</p><div class="actions" style="justify-content:center"><button type="button" class="btn ghost" id="undo">← ひとつ戻る</button><button type="button" class="btn" id="restart">最初からやり直す</button></div></div>';
+    } else {
+      var mid = (P.lo + P.hi) >> 1, a = items[P.cur], b = items[P.order[mid]], flip = P.asked % 2 === 1;
+      var left = flip ? b : a, right = flip ? a : b;
+      var card = function (it, isNew) {
+        return '<button type="button" class="opt" data-pick="' + (isNew ? 'new' : 'old') + '"><span class="tag' + (isNew ? '' : ' plain') + '">' + (isNew ? '新しく入れる' : 'いま ' + (mid + 1) + ' 位') + '</span><span class="oname">' + esc(it.name) + '</span><span class="oprice">' + rp(it.price) + '</span><span class="onote">' + esc(it.note) + '</span></button>';
+      };
+      ask.innerHTML = '<p class="hint" style="text-align:center">どっちが欲しい？</p><div class="duel">' + card(left, left === a) + card(right, right === a) + '<span class="vs" aria-hidden="true">VS</span></div>' +
+        '<div class="actions" style="justify-content:space-between"><button type="button" class="btn ghost" id="undo"' + (hist.length ? '' : ' disabled') + '>← ひとつ戻る</button><button type="button" class="btn ghost" id="tie">どちらでもいい</button></div>' +
+        '<div class="actions"><button type="button" class="btn" id="auto">残りを自動で答える（試し用）</button><button type="button" class="btn ghost" id="restart">最初からやり直す</button></div>';
+    }
+
+    var n = P.order.length;
+    $('#rank-note').textContent = P.done ? n + ' 件の順位が確定' : n + ' 件が順位づけ済み。あと ' + P.queue.length + ' 件';
+    $('#legend').innerHTML = P.done ? '<span><i style="background:var(--ok-soft)"></i>予算内で買うもの</span>' :
+      '<span><i></i>新しいアイテムが入りうる範囲（' + (P.lo + 1) + '〜' + (P.hi + 1) + ' 位）</span>';
+    var sol = P.done ? solve() : null;
+    var h = '';
+    P.order.forEach(function (id, idx) {
+      var it = items[id], cls = 'r';
+      if (sol) { if (sol.chosen[id]) cls += ' buy'; }
+      else {
+        if (idx >= P.lo && idx < P.hi) cls += ' in';
+        if (idx === ((P.lo + P.hi) >> 1)) cls += ' mid';
+      }
+      h += '<div class="' + cls + '"><span class="no">' + (idx + 1) + '</span><span class="nm">' + esc(it.name) + '</span><span class="pr">' + rp(it.price) + '</span></div>';
+    });
+    $('#rank').innerHTML = h;
+
+    var res = $('#result');
+    if (sol) {
+      var spent = 0, cnt = 0; Object.keys(sol.chosen).forEach(function (k) { spent += items[k].price; cnt++; });
+      res.innerHTML = '<div class="verdict"><span class="label">予算内で一番合理的な買い物</span><span class="big num">' + rp(spent) + '</span><span class="sub">予算 ' + rp(budget) + ' ・ 残り ' + rp(budget - spent) + ' ・ ' + cnt + '点</span></div>' +
+        '<p class="hint">順位を点数（1位が ' + n + ' 点、最下位が 1 点）に変えて、予算内で合計点が最大になる組み合わせを動的計画法で求めました。計算時間は ' + sol.ms.toFixed(1) + ' ミリ秒です。</p>';
+    } else { res.innerHTML = ''; }
+  }
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('button'); if (!t) return;
+    if (t.dataset.pick) { answer(t.dataset.pick === 'new'); return; }
+    if (t.id === 'tie') { answer(false); return; }
+    if (t.id === 'undo') { undo(); return; }
+    if (t.id === 'auto') { auto(); return; }
+    if (t.id === 'restart') { start(); }
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (!P || P.done || (ev.target.tagName || '').toLowerCase() === 'input') return;
+    var mid = (P.lo + P.hi) >> 1, flip = P.asked % 2 === 1;
+    if (ev.key === 'ArrowLeft') { ev.preventDefault(); answer(!flip); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); answer(flip); }
+  });
+  $('#n').addEventListener('input', function (ev) { N = Number(ev.target.value); start(); });
+  $('#budget').addEventListener('input', function (ev) { budget = toNum(ev.target.value); if (P && P.done) render(); });
+  $('#budget').addEventListener('blur', function (ev) { ev.target.value = budget.toLocaleString('id-ID'); });
+  start();
+})();
+</script>
