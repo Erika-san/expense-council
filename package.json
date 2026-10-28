@@ -1,0 +1,16 @@
+{
+  "name": "expense-council",
+  "version": "1.0.0",
+  "description": "出費会議 — 2択に答えるだけで、予算内の買い物を決めるブラウザアプリ",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/logic.test.js",
+    "test:ui": "node --test test/ui.test.js",
+    "test:all": "node --test test/logic.test.js test/ui.test.js",
+    "serve": "node test/serve.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  }
+}

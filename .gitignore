@@ -1,0 +1,4 @@
+node_modules/
+test/screenshots/
+package-lock.json.bak
+.claude/
