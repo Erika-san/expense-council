@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="欲しいものを2択で比べて、予算内の買い物を決める出費会議">
+  <title>出費会議</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-head">
+      <div class="title-row">
+        <div>
+          <h1>出費会議</h1>
+          <p class="lead">2択に答えるだけで、予算内の買い物を決めます。</p>
+        </div>
+        <button class="theme-toggle" type="button" data-action="theme" aria-label="テーマを切り替える" title="テーマを切り替える">◐</button>
+      </div>
+      <nav class="steps" id="steps" aria-label="手順">
+        <button type="button" data-go="register"><span class="n">1</span>登録</button>
+        <button type="button" data-go="compare"><span class="n">2</span>比較</button>
+        <button type="button" data-go="result"><span class="n">3</span>結果</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="v-register" class="view stack" aria-labelledby="register-title">
+        <div class="banner" id="sample-banner" hidden>
+          <span><b>サンプル表示中。</b>最初の1件を追加すると消えます。</span>
+          <button class="btn sm" type="button" data-action="clear-sample">今すぐ消す</button>
+        </div>
+
+        <div class="panel">
+          <div class="field">
+            <label for="budget">来月の予算（Rp）</label>
+            <input type="text" id="budget" class="num" inputmode="numeric" autocomplete="off" placeholder="5.000.000">
+          </div>
+          <div class="meter" id="meter"></div>
+        </div>
+
+        <form class="panel" id="add-form" autocomplete="off">
+          <h2 id="register-title">欲しいものを追加</h2>
+          <div class="row">
+            <div class="field">
+              <label for="name">名前</label>
+              <input type="text" id="name" maxlength="30" required placeholder="例：ノイズキャンセリングイヤホン">
+            </div>
+            <div class="field">
+              <label for="price">値段（Rp）</label>
+              <input type="text" id="price" class="num" inputmode="numeric" required placeholder="1.800.000">
+            </div>
+          </div>
+          <div class="field">
+            <label for="note">アピールポイント <span class="optional">任意</span></label>
+            <input type="text" id="note" maxlength="60" placeholder="例：通勤電車が静かになる">
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="submit">追加する</button>
+            <span class="msg" id="form-msg" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+
+        <div class="panel">
+          <div class="list-head"><h2>登録したもの</h2><span class="hint" id="list-count"></span></div>
+          <div class="list" id="list"></div>
+        </div>
+
+        <div id="stash" class="stack compact"></div>
+
+        <div class="next-area">
+          <button class="btn primary wide" type="button" id="next-btn"></button>
+          <p class="hint" id="next-hint"></p>
+        </div>
+      </section>
+
+      <section id="v-compare" class="view stack" aria-labelledby="compare-title" hidden>
+        <div class="progress" aria-live="polite">
+          <div class="progress-bar"><div class="progress-fill" id="p-fill"></div></div>
+          <div class="progress-cap"><span id="p-text"></span><span id="p-left"></span></div>
+        </div>
+        <div id="question"></div>
+        <div class="panel ranking-panel">
+          <div class="section-title"><h2 id="compare-title">順位表</h2><span class="hint" id="rank-note"></span></div>
+          <p class="hint" id="rank-help"></p>
+          <div class="rank" id="rank"></div>
+        </div>
+      </section>
+
+      <section id="v-result" class="view stack" aria-labelledby="result-title" hidden>
+        <div id="result"></div>
+      </section>
+    </main>
+
+    <footer class="footnote">データはこのブラウザにだけ保存されます。サーバーには送信しません。</footer>
+  </div>
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
