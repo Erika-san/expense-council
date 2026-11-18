@@ -452,3 +452,14 @@ test('状態の整合: buy/drop/remove/budget の乱操作で不変条件が崩�
     assert.equal(L.rankedIds(s).length, L.eligible(s).length);
   }
 });
+
+test('isComplete: 質問中・順番待ちがあるあいだは false、答えきると true', () => {
+  assert.equal(L.isComplete(L.newState()), true);
+  const s = make(5);
+  assert.equal(L.isComplete(s), false);
+  run(s, { 1: 5, 2: 4, 3: 3, 4: 2, 5: 1 });
+  assert.equal(L.isComplete(s), true);
+  // 完了後に追加すると、また false になる
+  L.addItem(s, { name: 'late', price: 500 }, mulberry(3));
+  assert.equal(L.isComplete(s), false);
+});

@@ -137,6 +137,9 @@
     return true;
   }
 
+  // 比較が終わったか（質問中のアイテムも順番待ちもない）。sync 後の state で使う。
+  function isComplete(state) { return state.session.cur == null; }
+
   function canUndo(state) {
     return state.answers.some(function (a) { return isEligible(state, byId(state, a.item)); });
   }
@@ -321,7 +324,7 @@
     formatRp: formatRp, formatNum: formatNum, parseRp: parseRp,
     newState: newState, sampleState: sampleState, clearSample: clearSample,
     byId: byId, eligible: eligible, isEligible: isEligible, activeCount: activeCount, overBudget: overBudget, rankedIds: rankedIds,
-    sync: sync, currentQuestion: currentQuestion, answer: answer, canUndo: canUndo, undo: undo,
+    sync: sync, currentQuestion: currentQuestion, answer: answer, isComplete: isComplete, canUndo: canUndo, undo: undo,
     addItem: addItem, setBudget: setBudget, buy: buy, unbuy: unbuy, drop: drop, revive: revive, removeItem: removeItem,
     solve: solve, sanitize: sanitize, load: load, save: save
   };

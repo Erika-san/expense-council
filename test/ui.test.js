@@ -124,6 +124,38 @@ test('矢印キーとひとつ戻る・どちらでもいい', async () => {
   assert.equal(await page.locator('#p-text').innerText(), '1 問回答済み');
 });
 
+test('結果は比較が終わるまで見られない。結果画面で比べるものが増えたら比較へ戻る', async () => {
+  const page = await open();
+  await page.fill('#budget', '10000');
+  await add(page, '品1', 1000); await add(page, '品2', 2000); await add(page, '品3', 3000);
+  assert.equal(await page.innerText('#next-btn'), '比較をはじめる →');
+  // 比較の途中: 結果ボタンは押せず、理由が出る
+  await page.click('#next-btn');
+  assert.equal(await page.getAttribute('#steps [data-go=result]', 'aria-disabled'), 'true');
+  await page.click('#steps [data-go=result]', { force: true }); // aria-disabled でも人は押せる
+  assert.equal(await page.locator('#v-compare').isVisible(), true);
+  assert.match(await page.locator('.toast').innerText(), /比較が終わると/);
+  await answerAll(page);
+  assert.equal(await page.getAttribute('#steps [data-go=result]', 'aria-disabled'), 'false');
+  await page.click('#steps [data-go=result]');
+  assert.equal(await page.locator('#v-result').isVisible(), true);
+  // 品3 を買う → 予算 7000。予算超えの品4（9500）を登録しても比較は増えない
+  await page.locator('#result .pick', { hasText: '品3' }).locator('[data-action=buy]').click();
+  await page.click('#steps [data-go=register]');
+  await add(page, '品4', 9500);
+  assert.equal(await page.innerText('#next-btn'), '結果を見る →');
+  await page.click('#next-btn');
+  assert.equal(await page.locator('#v-result').isVisible(), true);
+  // 購入を取り消すと予算が 10000 に戻り、品4 が比較の対象になる → 結果はまた見られなくなる
+  await page.click('#steps [data-go=register]');
+  await page.click('#stash [data-action=unbuy]');
+  assert.equal(await page.innerText('#next-btn'), '比較を続ける →');
+  assert.equal(await page.getAttribute('#steps [data-go=result]', 'aria-disabled'), 'true');
+  await page.click('#next-btn');
+  assert.equal(await page.locator('.opt').count(), 2);
+  assert.deepEqual(page.errors, []);
+});
+
 test('T-9 削除は2回押して確定', async () => {
   const page = await open();
   await page.fill('#budget', '100000');

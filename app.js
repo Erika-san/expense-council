@@ -18,6 +18,8 @@
   function eligible() { return L.eligible(state); }
   function sum(items) { return items.reduce(function (total, i) { return total + i.price; }, 0); }
   function scrollTop() { window.scrollTo(0, 0); }
+  // 結果を見られるのは、アイテムがあり、比較が終わっているときだけ。
+  function canSeeResult() { return state.items.length > 0 && L.isComplete(state); }
 
   function showToast(message) {
     var old = $('.toast'); if (old) old.remove();
@@ -29,6 +31,7 @@
   function setStep(next) {
     if (next === 'compare' && !L.currentQuestion(state) && eligible().length < 2) return;
     if (next === 'result' && !state.items.length) return;
+    if (next === 'result' && !canSeeResult()) { showToast('比較が終わると結果を見られます。'); return; }
     step = next; render(); save(); scrollTop();
   }
 
@@ -80,9 +83,10 @@
     }).join('') : '<p class="empty">まだ何もありません。上のフォームから1件目を追加してください。</p>';
 
     var canCompare = eligible().length >= 2, q = L.currentQuestion(state), next = $('#next-btn'), hint = $('#next-hint');
-    next.disabled = !canCompare && !active.length;
-    next.dataset.go = canCompare ? 'compare' : 'result';
-    next.textContent = canCompare ? (q ? '比較を続ける →' : '比較をはじめる →') : '結果を見る →';
+    var goCompare = !!q;
+    next.disabled = !q && !active.length;
+    next.dataset.go = goCompare ? 'compare' : 'result';
+    next.textContent = goCompare ? (state.answers.length ? '比較を続ける →' : '比較をはじめる →') : '結果を見る →';
     hint.textContent = budget == null ? 'まず予算を入れてください。' : canCompare ? '登録は後からいつでも追加できます。' : active.length ? '予算内のものを2つ以上登録すると比較できます。' : 'まず欲しいものを登録してください。';
   }
 
@@ -132,11 +136,17 @@
   }
 
   function render() {
+    // 結果画面にいる間に比べるものが増えたら（復活・購入の取り消し・予算増など）、比較へ戻す。
+    if (step === 'result' && !canSeeResult()) {
+      step = L.currentQuestion(state) ? 'compare' : 'register';
+      if (step === 'compare') showToast('新しく比べるものがあります。比較が終わると結果に戻れます。');
+    }
     ['register', 'compare', 'result'].forEach(function (name) { $('#v-' + name).hidden = step !== name; });
     document.querySelectorAll('#steps button').forEach(function (button) {
-      var name = button.dataset.go, disabled = (name === 'compare' && eligible().length < 2) || (name === 'result' && !state.items.length);
+      var name = button.dataset.go, disabled = (name === 'compare' && eligible().length < 2) || (name === 'result' && !canSeeResult());
       if (name === step) button.setAttribute('aria-current', 'step'); else button.removeAttribute('aria-current');
       button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      if (name === 'result') button.title = disabled && state.items.length ? '比較が終わると見られます' : '';
     });
     renderRegister();
     if (step === 'compare') renderCompare();
@@ -160,7 +170,11 @@
 
   document.addEventListener('click', function (event) {
     var button = event.target.closest('button'); if (!button) return;
-    if (button.dataset.go) { if (!button.disabled && button.getAttribute('aria-disabled') !== 'true') setStep(button.dataset.go); return; }
+    if (button.dataset.go) {
+      // 結果ボタンは押せない理由をトーストで伝えるため、aria-disabled でも setStep に渡す（setStep 側で止める）。
+      if (!button.disabled && (button.getAttribute('aria-disabled') !== 'true' || button.dataset.go === 'result')) setStep(button.dataset.go);
+      return;
+    }
     if (button.dataset.pick) {
       var q = L.currentQuestion(state), choice = Number(button.dataset.pick) === q.cur.id ? 'new' : 'old';
       L.answer(state, choice); save(); render(); return;
